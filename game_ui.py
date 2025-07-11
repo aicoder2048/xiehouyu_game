@@ -644,9 +644,22 @@ class GameUI:
         
         self._update_ui()
     
+    def _start_new_game(self):
+        """Start a new game preserving player names and settings"""
+        print(f"DEBUG: Starting new game preserving player names")  # Debug log
+        self.game_state.phase = GamePhase.SETUP
+        self.game_state.current_round = 0
+        
+        # Reset only game stats, preserve player names
+        for player in self.game_state.player_stats:
+            self.game_state.player_stats[player] = PlayerStats()
+        
+        # Do NOT reset player names or rounds selector
+        self._update_ui()
+    
     def _on_new_game(self):
         """Handle new game from dialog"""
-        self._on_reset_game()
+        self._start_new_game()
     
     def _update_ui(self):
         """Update all UI components"""
@@ -665,11 +678,12 @@ class GameUI:
             question = self.game_state.get_player_question(player)
             if question and self.game_state.phase == GamePhase.WAITING:
                 panel.update_question(question)
+                # Always reset answer styles when entering new round
+                panel.reset_answer_styles()
                 # Only enable answers if player hasn't answered yet
                 if self.game_state.player_answers[player] is None:
                     panel.enable_answers()
                     panel.update_status('🤔 请选择答案')
-                    panel.reset_answer_styles()
                 else:
                     panel.disable_answers()
                     panel.update_status('⏳ 等待对方回答...')
@@ -677,6 +691,8 @@ class GameUI:
                 panel.disable_answers()
                 if self.game_state.phase == GamePhase.SETUP:
                     panel.update_status('😊 等待游戏开始')
+                    # Reset answer styles when in setup
+                    panel.reset_answer_styles()
                 elif self.game_state.phase == GamePhase.PLAYING:
                     panel.update_status('⏳ 准备下一轮...')
                     # Reset answer styles when starting new round
