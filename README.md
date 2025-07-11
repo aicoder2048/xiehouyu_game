@@ -125,7 +125,7 @@ config = GameConfig(
 
 ## 🌟 数据集说明
 
-项目包含 14,032 条精选的中国传统歇后语，涵盖：
+项目包含 14,032 条精选的中国传统歇后语，数据来源于 [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) 开源项目，涵盖：
 - 生活常识类
 - 历史典故类
 - 动物植物类
@@ -172,6 +172,7 @@ config = GameConfig(
 
 ## 🙏 致谢
 
+- 感谢 [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) 项目提供的歇后语数据集
 - 感谢所有贡献传统中国歇后语文化的前辈
 - 感谢 [NiceGUI](https://nicegui.io/) 提供的优秀Web UI框架
 - 感谢开源社区的支持和贡献
