@@ -72,6 +72,8 @@ xiehouyu_game/
 ├── demo_usage.py           # 使用示例
 ├── pyproject.toml          # 项目配置
 ├── uv.lock                 # 依赖锁定文件
+├── data/                   # 数据目录
+├── ai_docs/                # AI文档资料
 └── README.md               # 项目说明
 ```
 
