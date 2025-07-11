@@ -345,11 +345,16 @@ class PlayerPanel:
         """Update question display"""
         self.question_label.text = question.riddle
         
+        # IMPORTANT: Reset all answer button styles first
+        self.reset_answer_styles()
+        
         # Update answer buttons with full text (no masking)
         for i, choice in enumerate(question.choices):
             if i < len(self.answer_buttons):
                 # Use the full answer text without masking
                 self.answer_buttons[i].text = choice
+                # Ensure each button has clean styling
+                self.answer_buttons[i].style(GameTheme.ANSWER_BUTTON)
     
     def disable_answers(self):
         """Disable all answer buttons"""
@@ -375,9 +380,12 @@ class PlayerPanel:
                 btn.style(f'{GameTheme.ANSWER_BUTTON}; opacity: 0.6;')
     
     def reset_answer_styles(self):
-        """Reset answer button styles"""
+        """Reset answer button styles - comprehensive reset"""
         for btn in self.answer_buttons:
-            btn.style(GameTheme.ANSWER_BUTTON)
+            # Force complete style reset with explicit overrides
+            btn.style(f'{GameTheme.ANSWER_BUTTON}; opacity: 1 !important; background: rgba(255, 255, 255, 0.9) !important; color: #2D3748 !important;')
+            # Also enable the button to ensure it's interactive
+            btn.enable()
     
     def update_status(self, status: str):
         """Update player status"""
@@ -666,6 +674,12 @@ class GameUI:
         # Update game header
         self.game_header.update_button_state(self.game_state.phase)
         
+        # CRITICAL: Force reset all answer styles first if in new round
+        if self.game_state.phase == GamePhase.WAITING:
+            print(f"DEBUG: Force resetting all answer styles for new round")
+            for player in [PlayerSide.LEFT, PlayerSide.RIGHT]:
+                self.player_panels[player].reset_answer_styles()
+        
         # Update player panels
         for player in [PlayerSide.LEFT, PlayerSide.RIGHT]:
             panel = self.player_panels[player]
@@ -677,16 +691,25 @@ class GameUI:
             # Update question and answers
             question = self.game_state.get_player_question(player)
             if question and self.game_state.phase == GamePhase.WAITING:
-                panel.update_question(question)
-                # Always reset answer styles when entering new round
+                # CRITICAL: Reset answer styles FIRST before updating question
                 panel.reset_answer_styles()
-                # Only enable answers if player hasn't answered yet
-                if self.game_state.player_answers[player] is None:
-                    panel.enable_answers()
-                    panel.update_status('🤔 请选择答案')
-                else:
+                panel.update_question(question)
+                # Force enable all buttons and reset styles again to ensure clean state
+                panel.enable_answers()
+                panel.reset_answer_styles()
+                
+                # Only then check if player should be disabled
+                if self.game_state.player_answers[player] is not None:
                     panel.disable_answers()
-                    panel.update_status('⏳ 等待对方回答...')
+                    # Get the answer text the player chose
+                    answer_index = self.game_state.player_answers[player]
+                    if question and answer_index is not None and 0 <= answer_index < len(question.choices):
+                        chosen_answer = question.choices[answer_index]
+                        panel.update_status(f'你已回答（{chosen_answer}），等待对方回答后进入下一轮')
+                    else:
+                        panel.update_status('你已回答，等待对方回答后进入下一轮')
+                else:
+                    panel.update_status('🤔 请选择答案')
             else:
                 panel.disable_answers()
                 if self.game_state.phase == GamePhase.SETUP:

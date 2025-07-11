@@ -230,6 +230,7 @@ class GameState:
         self.player_questions[PlayerSide.RIGHT] = self.answer_generator.generate_question()
         self.player_answers = {PlayerSide.LEFT: None, PlayerSide.RIGHT: None}
         self.phase = GamePhase.WAITING
+        print(f"DEBUG: New round started, phase set to WAITING")  # Debug log
     
     def submit_answer(self, player: PlayerSide, answer_index: int) -> bool:
         """Submit an answer for a player"""
