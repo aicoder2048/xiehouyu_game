@@ -451,15 +451,21 @@ class GameHeader:
                     
                     # Start button
                     self.start_button = ui.button(
-                        '🚀 开始游戏',
+                        '🚀 开始',
                         on_click=self.on_start_game
                     ).style(GameTheme.START_BUTTON).classes('start-btn')
                     
                     # Reset button
                     ui.button(
-                        '🔄 重置游戏',
+                        '🔄 重置',
                         on_click=self.on_reset_game
                     ).style(GameTheme.START_BUTTON.replace(GameTheme.SUCCESS, GameTheme.WARNING)).classes('reset-btn')
+                    
+                    # Navigation buttons
+                    ui.button(
+                        '📚 探索',
+                        on_click=lambda: ui.navigate.to('/explorer')
+                    ).style(GameTheme.START_BUTTON.replace(GameTheme.SUCCESS, '#3B82F6')).classes('nav-btn')
                 
                 # Right side - Next round button (initially hidden)
                 self.global_next_round_button = ui.button(
@@ -470,7 +476,7 @@ class GameHeader:
     def update_button_state(self, game_phase: GamePhase):
         """Update button states based on game phase"""
         if game_phase == GamePhase.SETUP:
-            self.start_button.text = '🚀 开始游戏'
+            self.start_button.text = '🚀 开始'
             self.start_button.enable()
             self.rounds_select.enable()
         elif game_phase in [GamePhase.PLAYING, GamePhase.WAITING, GamePhase.ROUND_FEEDBACK]:

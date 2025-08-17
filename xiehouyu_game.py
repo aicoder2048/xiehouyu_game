@@ -17,6 +17,7 @@ from nicegui import ui, app
 from game_logic import GameState, GameConfig, GamePhase, PlayerSide, PlayerStats
 from game_ui import GameUI, GameTheme
 from xiehouyu_explorer import XiehouyuExplorer
+from explorer_shared import explorer_shared
 
 
 class XiehouyuGame:
@@ -680,6 +681,222 @@ def help_page():
     
     # Back to game button
     ui.button('返回游戏', on_click=lambda: ui.navigate.to('/')).style(GameTheme.START_BUTTON).classes('mt-8')
+
+
+@ui.page('/explorer')
+def explorer_home_page():
+    """探索器首页"""
+    ui.page_title('歇后语探索学习')
+    
+    # 添加与游戏统一的样式
+    ui.add_head_html(f'''
+        <style>
+            body {{
+                background: linear-gradient(135deg, {GameTheme.BACKGROUND} 0%, #E2E8F0 50%, #F0F4F8 100%);
+                font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+                min-height: 100vh;
+                position: relative;
+                overflow-x: hidden;
+            }}
+            
+            /* 与游戏一致的动画背景 */
+            body::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(2px 2px at 20px 30px, #FFD700, transparent),
+                           radial-gradient(2px 2px at 40px 70px, #FF69B4, transparent),
+                           radial-gradient(1px 1px at 90px 40px, #00CED1, transparent),
+                           radial-gradient(1px 1px at 130px 80px, #FFB347, transparent),
+                           radial-gradient(2px 2px at 160px 30px, #98FB98, transparent);
+                background-repeat: repeat;
+                background-size: 200px 100px;
+                animation: sparkle 3s linear infinite;
+                pointer-events: none;
+                z-index: -1;
+            }}
+            
+            @keyframes sparkle {{
+                0% {{
+                    transform: translateY(0);
+                    opacity: 0.5;
+                }}
+                50% {{
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translateY(-100px);
+                    opacity: 0.5;
+                }}
+            }}
+            
+            .content-wrapper {{
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 20px;
+            }}
+            
+            /* 卡片悬停效果 */
+            .card:hover {{
+                transform: translateY(-2px);
+                transition: transform 0.3s ease;
+            }}
+            
+            /* 平滑过渡 */
+            * {{
+                transition: all 0.3s ease;
+            }}
+        </style>
+    ''')
+    
+    explorer_shared.create_home_content()
+
+
+@ui.page('/explorer/random')
+def explorer_random_page():
+    """探索器随机页面"""
+    ui.page_title('随机探索 - 歇后语学习')
+    
+    # 添加与游戏统一的样式
+    ui.add_head_html(f'''
+        <style>
+            body {{
+                background: linear-gradient(135deg, {GameTheme.BACKGROUND} 0%, #E2E8F0 50%, #F0F4F8 100%);
+                font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+                min-height: 100vh;
+                position: relative;
+                overflow-x: hidden;
+            }}
+            
+            /* 与游戏一致的动画背景 */
+            body::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(2px 2px at 20px 30px, #FFD700, transparent),
+                           radial-gradient(2px 2px at 40px 70px, #FF69B4, transparent),
+                           radial-gradient(1px 1px at 90px 40px, #00CED1, transparent),
+                           radial-gradient(1px 1px at 130px 80px, #FFB347, transparent),
+                           radial-gradient(2px 2px at 160px 30px, #98FB98, transparent);
+                background-repeat: repeat;
+                background-size: 200px 100px;
+                animation: sparkle 3s linear infinite;
+                pointer-events: none;
+                z-index: -1;
+            }}
+            
+            @keyframes sparkle {{
+                0% {{
+                    transform: translateY(0);
+                    opacity: 0.5;
+                }}
+                50% {{
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translateY(-100px);
+                    opacity: 0.5;
+                }}
+            }}
+            
+            .content-wrapper {{
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 20px;
+            }}
+            
+            /* 卡片悬停效果 */
+            .card:hover {{
+                transform: translateY(-2px);
+                transition: transform 0.3s ease;
+            }}
+            
+            /* 平滑过渡 */
+            * {{
+                transition: all 0.3s ease;
+            }}
+        </style>
+    ''')
+    
+    explorer_shared.create_random_content()
+
+
+@ui.page('/explorer/stats')
+def explorer_stats_page():
+    """探索器统计页面"""
+    ui.page_title('数据统计 - 歇后语学习')
+    
+    # 添加与游戏统一的样式
+    ui.add_head_html(f'''
+        <style>
+            body {{
+                background: linear-gradient(135deg, {GameTheme.BACKGROUND} 0%, #E2E8F0 50%, #F0F4F8 100%);
+                font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+                min-height: 100vh;
+                position: relative;
+                overflow-x: hidden;
+            }}
+            
+            /* 与游戏一致的动画背景 */
+            body::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(2px 2px at 20px 30px, #FFD700, transparent),
+                           radial-gradient(2px 2px at 40px 70px, #FF69B4, transparent),
+                           radial-gradient(1px 1px at 90px 40px, #00CED1, transparent),
+                           radial-gradient(1px 1px at 130px 80px, #FFB347, transparent),
+                           radial-gradient(2px 2px at 160px 30px, #98FB98, transparent);
+                background-repeat: repeat;
+                background-size: 200px 100px;
+                animation: sparkle 3s linear infinite;
+                pointer-events: none;
+                z-index: -1;
+            }}
+            
+            @keyframes sparkle {{
+                0% {{
+                    transform: translateY(0);
+                    opacity: 0.5;
+                }}
+                50% {{
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translateY(-100px);
+                    opacity: 0.5;
+                }}
+            }}
+            
+            .content-wrapper {{
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 20px;
+            }}
+            
+            /* 卡片悬停效果 */
+            .card:hover {{
+                transform: translateY(-2px);
+                transition: transform 0.3s ease;
+            }}
+            
+            /* 平滑过渡 */
+            * {{
+                transition: all 0.3s ease;
+            }}
+        </style>
+    ''')
+    
+    explorer_shared.create_stats_content()
 
 
 if __name__ == '__main__':
