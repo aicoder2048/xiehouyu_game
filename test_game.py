@@ -38,7 +38,7 @@ def test_game_logic():
     
     # Test GameState
     print("\n🎮 Testing GameState...")
-    config = GameConfig(total_rounds=3, round_time_limit=30)
+    config = GameConfig(total_rounds=3, points_per_correct=2, bonus_for_correct=1)
     game_state = GameState(data, config)
     
     print(f"Initial game phase: {game_state.phase}")
@@ -48,29 +48,51 @@ def test_game_logic():
     print(f"Game started, phase: {game_state.phase}")
     print(f"Current round: {game_state.current_round}")
     
-    if game_state.current_question:
-        print(f"Current question: {game_state.current_question.riddle}")
+    # Get questions for both players
+    left_question = game_state.get_player_question(PlayerSide.LEFT)
+    right_question = game_state.get_player_question(PlayerSide.RIGHT)
+    
+    if left_question:
+        print(f"Left player question: {left_question.riddle}")
+        print(f"Left player correct answer: {left_question.correct_answer}")
+    
+    if right_question:
+        print(f"Right player question: {right_question.riddle}")
+        print(f"Right player correct answer: {right_question.correct_answer}")
     
     # Test answer submission
     print("\n🔍 Testing answer submission...")
-    correct_idx = game_state.current_question.correct_index
-    
-    # Player 1 submits correct answer
-    success = game_state.submit_answer(PlayerSide.LEFT, correct_idx)
-    print(f"Player 1 submitted correct answer: {success}")
-    
-    # Player 2 submits wrong answer
-    wrong_idx = (correct_idx + 1) % 4
-    success = game_state.submit_answer(PlayerSide.RIGHT, wrong_idx)
-    print(f"Player 2 submitted wrong answer: {success}")
-    
-    # Check scores
-    left_stats = game_state.player_stats[PlayerSide.LEFT]
-    right_stats = game_state.player_stats[PlayerSide.RIGHT]
-    
-    print(f"\n📊 Scores after round 1:")
-    print(f"  Player 1: {left_stats.score} points, {left_stats.correct_answers} correct")
-    print(f"  Player 2: {right_stats.score} points, {right_stats.correct_answers} correct")
+    if left_question and right_question:
+        left_correct_idx = left_question.correct_index
+        right_correct_idx = right_question.correct_index
+        
+        # Test 1: Player 1 submits correct answer first (should get priority bonus)
+        success = game_state.submit_answer(PlayerSide.LEFT, left_correct_idx)
+        print(f"Player 1 submitted correct answer first: {success}")
+        print(f"First to answer: {game_state.first_to_answer}")
+        
+        # Test 2: Player 2 submits correct answer second (should get only base score)
+        success = game_state.submit_answer(PlayerSide.RIGHT, right_correct_idx)
+        print(f"Player 2 submitted correct answer second: {success}")
+        
+        # Check scores
+        left_stats = game_state.player_stats[PlayerSide.LEFT]
+        right_stats = game_state.player_stats[PlayerSide.RIGHT]
+        
+        print(f"\n📊 Scores after round 1:")
+        print(f"  Player 1 (优先回答): {left_stats.score} points, {left_stats.correct_answers} correct")
+        print(f"  Player 1 details: {left_stats.last_round_details}")
+        print(f"  Player 2 (非优先回答): {right_stats.score} points, {right_stats.correct_answers} correct")
+        print(f"  Player 2 details: {right_stats.last_round_details}")
+        print(f"  Game phase: {game_state.phase}")
+        
+        # Verify expected scores
+        expected_left_score = 3  # 2基础 + 1优先奖励
+        expected_right_score = 2  # 2基础
+        if left_stats.score == expected_left_score and right_stats.score == expected_right_score:
+            print("✅ 得分逻辑正确！优先回答者获得奖励分")
+        else:
+            print(f"❌ 得分逻辑错误！期望左侧{expected_left_score}分，右侧{expected_right_score}分")
     
     print("\n✅ Game logic test completed successfully!")
 

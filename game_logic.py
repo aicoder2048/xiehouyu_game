@@ -22,6 +22,7 @@ class GamePhase(Enum):
     SETUP = "setup"
     PLAYING = "playing"
     WAITING = "waiting"
+    ROUND_FEEDBACK = "round_feedback"  # 显示本轮反馈的阶段
     FINISHED = "finished"
 
 
@@ -35,7 +36,8 @@ class PlayerSide(Enum):
 class GameConfig:
     """Game configuration"""
     total_rounds: int = 12
-    points_per_correct: int = 1
+    points_per_correct: int = 2  # 回答正确的基础得分
+    bonus_for_correct: int = 1  # 回答正确的额外奖励分数
 
 
 @dataclass
@@ -46,18 +48,24 @@ class PlayerStats:
     wrong_answers: int = 0
     current_streak: int = 0
     max_streak: int = 0
+    last_round_score: int = 0  # 上一轮获得的分数
+    last_round_details: str = ""  # 上一轮得分详情
     
-    def add_correct_answer(self):
-        """Add a correct answer"""
-        self.score += 1
+    def add_correct_answer(self, points_earned: int, details: str):
+        """Add a correct answer with points and details"""
+        self.score += points_earned
         self.correct_answers += 1
         self.current_streak += 1
         self.max_streak = max(self.max_streak, self.current_streak)
+        self.last_round_score = points_earned
+        self.last_round_details = details
     
     def add_wrong_answer(self):
         """Add a wrong answer"""
         self.wrong_answers += 1
         self.current_streak = 0
+        self.last_round_score = 0
+        self.last_round_details = "回答错误，本轮得分为0分"
 
 
 @dataclass
@@ -156,22 +164,34 @@ class AnswerGenerator:
 
 
 class ScoreManager:
-    """Manages simplified scoring system"""
+    """Manages scoring system with bonus and detailed feedback"""
     
     def __init__(self, config: GameConfig):
         self.config = config
     
-    def calculate_score(self, is_correct: bool, difficulty_level: int) -> int:
-        """Calculate score for a round"""
+    def calculate_score_and_details(self, is_correct: bool, difficulty_level: int, is_first_to_answer: bool = False) -> tuple[int, str]:
+        """Calculate score and detailed explanation for a round"""
         if not is_correct:
-            return 0
+            return 0, "回答错误，本轮得分为0分"
         
-        base_score = self.config.points_per_correct
+        base_score = self.config.points_per_correct  # 基础得分2分
         
-        # Simple difficulty bonus
-        difficulty_bonus = difficulty_level - 1
+        if is_first_to_answer:
+            # 优先回答者：基础分 + 优先奖励分
+            bonus_score = self.config.bonus_for_correct  # 优先奖励1分
+            total_score = base_score + bonus_score
+            details = f"回答正确！获得{base_score}分基础得分 + {bonus_score}分优先回答奖励，本轮共得{total_score}分"
+        else:
+            # 非优先回答者：只有基础分
+            total_score = base_score
+            details = f"回答正确！获得{base_score}分基础得分，本轮共得{total_score}分"
         
-        return base_score + difficulty_bonus
+        return total_score, details
+    
+    def calculate_score(self, is_correct: bool, difficulty_level: int) -> int:
+        """Calculate score for a round (backwards compatibility)"""
+        score, _ = self.calculate_score_and_details(is_correct, difficulty_level)
+        return score
 
 
 class GameState:
@@ -199,6 +219,7 @@ class GameState:
             PlayerSide.RIGHT: None
         }
         self.player_answers = {PlayerSide.LEFT: None, PlayerSide.RIGHT: None}
+        self.first_to_answer: Optional[PlayerSide] = None  # 追踪第一个回答的玩家
         
         # Game history
         self.round_history: List[Dict] = []
@@ -229,6 +250,7 @@ class GameState:
         self.player_questions[PlayerSide.LEFT] = self.answer_generator.generate_question()
         self.player_questions[PlayerSide.RIGHT] = self.answer_generator.generate_question()
         self.player_answers = {PlayerSide.LEFT: None, PlayerSide.RIGHT: None}
+        self.first_to_answer = None  # 重置第一个回答者追踪
         self.phase = GamePhase.WAITING
         print(f"DEBUG: New round started, phase set to WAITING")  # Debug log
     
@@ -237,6 +259,11 @@ class GameState:
         if self.phase != GamePhase.WAITING or self.player_answers[player] is not None:
             return False
         
+        # 记录第一个回答的玩家
+        is_first_to_answer = self.first_to_answer is None
+        if is_first_to_answer:
+            self.first_to_answer = player
+        
         self.player_answers[player] = answer_index
         
         # Process answer
@@ -244,34 +271,42 @@ class GameState:
         is_correct = answer_index == player_question.correct_index
         player_stats = self.player_stats[player]
         
+        # Calculate score with details, including first-to-answer bonus
+        score, details = self.score_manager.calculate_score_and_details(
+            is_correct, 
+            player_question.difficulty_level,
+            is_first_to_answer
+        )
+        
         if is_correct:
-            player_stats.add_correct_answer()
+            player_stats.add_correct_answer(score, details)
         else:
             player_stats.add_wrong_answer()
         
-        # Calculate score
-        score = self.score_manager.calculate_score(
-            is_correct, 
-            player_question.difficulty_level
-        )
-        player_stats.score += score
-        
         # Check if both players answered
         if all(answer is not None for answer in self.player_answers.values()):
-            print(f"DEBUG: Both players answered, ending round")  # Debug log
-            self.end_round()
-            
-            # Check if game should end
-            if self.current_round >= self.config.total_rounds:
-                print(f"DEBUG: Game should end now! Current: {self.current_round}, Total: {self.config.total_rounds}")  # Debug log
-                self.end_game()
-            else:
-                # Start next round automatically
-                print(f"DEBUG: Starting next round automatically")  # Debug log
-                self.start_new_round()
+            print(f"DEBUG: Both players answered, showing feedback")  # Debug log
+            self.show_round_feedback()
         
         return True
     
+    def show_round_feedback(self):
+        """Show round feedback phase"""
+        self.phase = GamePhase.ROUND_FEEDBACK
+        print(f"DEBUG: Entering round feedback phase")  # Debug log
+    
+    def continue_to_next_round(self):
+        """Continue to next round or end game"""
+        self.end_round()
+        
+        # Check if game should end
+        if self.current_round >= self.config.total_rounds:
+            print(f"DEBUG: Game should end now! Current: {self.current_round}, Total: {self.config.total_rounds}")  # Debug log
+            self.end_game()
+        else:
+            # Start next round
+            print(f"DEBUG: Starting next round")  # Debug log
+            self.start_new_round()
     
     def end_round(self):
         """End current round and prepare for next"""

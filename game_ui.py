@@ -241,6 +241,10 @@ class PlayerPanel:
         self.player_name_label = None
         self.player_name = "🐬 玩家一" if player_side == PlayerSide.LEFT else "🦊 玩家二"
         self.name_editing = False
+        self.feedback_card = None
+        self.feedback_label = None
+        self.correct_answer_label = None
+        self.score_details_label = None
         
         self._create_ui()
     
@@ -248,54 +252,65 @@ class PlayerPanel:
         """Create the integrated player panel"""
         panel_style = GameTheme.PLAYER_PANEL_LEFT if self.player_side == PlayerSide.LEFT else GameTheme.PLAYER_PANEL_RIGHT
         
-        with ui.card().style(panel_style).classes('w-full rainbow-border') as self.container:
-            # Player header
-            with ui.row().classes('w-full items-center justify-between mb-3'):
+        with ui.card().style(panel_style + '; min-height: auto; padding: 0.75rem;').classes('w-full rainbow-border') as self.container:
+            # Player header - 减少间距
+            with ui.row().classes('w-full items-center justify-between mb-2'):
                 with ui.column().classes('items-start'):
-                    # Editable player name with edit hint
-                    with ui.row().classes('items-center gap-2'):
-                        self.player_name_label = ui.label(self.player_name).classes('text-2xl font-bold cursor-pointer')
+                    # Editable player name with edit hint - 压缩尺寸
+                    with ui.row().classes('items-center gap-1'):
+                        self.player_name_label = ui.label(self.player_name).classes('text-xl font-bold cursor-pointer')
                         self.player_name_label.on('click', self._edit_name)
-                        ui.label('✏️').classes('text-sm opacity-60')
+                        ui.label('✏️').classes('text-xs opacity-60')
                     
                     ui.label('点击编辑名称').classes('text-xs opacity-50')
                     
                     self.player_name_input = ui.input(
                         value=self.player_name,
                         placeholder='输入名称后按回车确认'
-                    ).classes('text-2xl font-bold').style('display: none;')
+                    ).classes('text-xl font-bold').style('display: none;')
                     self.player_name_input.on('keydown.enter', self._save_name)
                     self.player_name_input.on('blur', self._save_name)
                     
                     self.status_label = ui.label('😊 等待开始...').classes('text-sm opacity-80')
                 
                 with ui.column().classes('items-center'):
-                    self.score_label = ui.label('0').classes('text-3xl font-bold')
-                    ui.label('🏆 得分').classes('text-sm opacity-80')
+                    self.score_label = ui.label('0').classes('text-2xl font-bold')
+                    ui.label('🏆 得分').classes('text-xs opacity-80')
             
-            # Streak and round info
-            with ui.row().classes('w-full items-center justify-between mb-2'):
+            # Streak and round info - 压缩尺寸
+            with ui.row().classes('w-full items-center justify-between mb-1'):
                 with ui.row().classes('items-center'):
-                    ui.label('🔥').classes('text-lg mr-1')
-                    self.streak_label = ui.label('连击: 0').classes('text-lg font-semibold')
+                    ui.label('🔥').classes('text-sm mr-1')
+                    self.streak_label = ui.label('连击: 0').classes('text-sm font-semibold')
                 
-                self.round_label = ui.label('🎯 第 1 轮').classes('text-lg font-semibold')
+                self.round_label = ui.label('🎯 第 1 轮').classes('text-sm font-semibold')
             
-            # Question area
-            with ui.card().style(GameTheme.QUESTION_CARD) as question_card:
-                ui.label('📝 题目:').classes('text-lg font-bold mb-2 text-gray-700')
-                self.question_label = ui.label('等待题目...').classes('text-xl font-bold text-center text-gray-800 p-2')
+            # Question area - 压缩尺寸
+            with ui.card().style(GameTheme.QUESTION_CARD + '; padding: 0.5rem; margin: 0.25rem 0;') as question_card:
+                ui.label('📝 题目:').classes('text-md font-bold mb-1 text-gray-700')
+                self.question_label = ui.label('等待题目...').classes('text-lg font-bold text-center text-gray-800 py-1')
             
-            # Answer area
-            ui.label('🎲 选择答案:').classes('text-lg font-bold mb-2 mt-2')
+            # Answer area - 2x2 grid layout
+            ui.label('🎲 选择答案:').classes('text-lg font-bold mb-1 mt-1')
             
-            # Answer buttons (will be replaced with MaskedAnswerButton)
-            for i in range(4):
-                btn = ui.button(
-                    f'选项 {i+1}',
-                    on_click=lambda idx=i: self._handle_answer_click(idx)
-                ).style(GameTheme.ANSWER_BUTTON).classes('w-full answer-btn')
-                self.answer_buttons.append(btn)
+            # Answer buttons in 2x2 grid
+            with ui.grid(columns=2).classes('w-full gap-2'):
+                for i in range(4):
+                    option_letter = ['A', 'B', 'C', 'D'][i]
+                    btn = ui.button(
+                        f'{option_letter}. 选项{i+1}',
+                        on_click=lambda idx=i: self._handle_answer_click(idx)
+                    ).style(GameTheme.ANSWER_BUTTON + '; height: 45px;').classes('w-full answer-btn text-sm')
+                    self.answer_buttons.append(btn)
+            
+            # Feedback area for round results - 压缩紧凑显示
+            with ui.card().style(GameTheme.QUESTION_CARD + '; display: none; padding: 0.5rem; margin: 0.25rem 0;') as self.feedback_card:
+                ui.label('📋 本轮反馈:').classes('text-md font-bold mb-1 text-gray-700')
+                self.correct_answer_label = ui.label('').classes('text-md font-semibold text-green-600 mb-1')
+                self.score_details_label = ui.label('').classes('text-sm text-gray-700 mb-1')
+                
+                # Next round countdown info
+                ui.label('⏰ 自动进入下一轮或点击右上角"下一轮"按钮').classes('text-xs text-gray-500')
     
     def _edit_name(self):
         """Switch to name editing mode"""
@@ -348,13 +363,14 @@ class PlayerPanel:
         # IMPORTANT: Reset all answer button styles first
         self.reset_answer_styles()
         
-        # Update answer buttons with full text (no masking)
+        # Update answer buttons with full text and A/B/C/D labels
         for i, choice in enumerate(question.choices):
             if i < len(self.answer_buttons):
-                # Use the full answer text without masking
-                self.answer_buttons[i].text = choice
-                # Ensure each button has clean styling
-                self.answer_buttons[i].style(GameTheme.ANSWER_BUTTON)
+                option_letter = ['A', 'B', 'C', 'D'][i]
+                # Use the full answer text with letter prefix
+                self.answer_buttons[i].text = f'{option_letter}. {choice}'
+                # Ensure each button has clean styling with height
+                self.answer_buttons[i].style(GameTheme.ANSWER_BUTTON + '; height: 45px;')
     
     def disable_answers(self):
         """Disable all answer buttons"""
@@ -390,6 +406,16 @@ class PlayerPanel:
     def update_status(self, status: str):
         """Update player status"""
         self.status_label.text = status
+    
+    def show_round_feedback(self, correct_answer: str, score_details: str):
+        """Show round feedback with correct answer and score details"""
+        self.correct_answer_label.text = f'✅ 正确答案: {correct_answer}'
+        self.score_details_label.text = score_details
+        self.feedback_card.style(GameTheme.QUESTION_CARD + '; display: block;')
+    
+    def hide_round_feedback(self):
+        """Hide round feedback"""
+        self.feedback_card.style(GameTheme.QUESTION_CARD + '; display: none;')
 
 
 class GameHeader:
@@ -399,8 +425,10 @@ class GameHeader:
         self.container = None
         self.start_button = None
         self.rounds_select = None
+        self.global_next_round_button = None
         self.on_start_game = on_start_game
         self.on_reset_game = on_reset_game
+        self.on_global_next_round = None  # 将由GameUI设置
         
         self._create_ui()
     
@@ -410,26 +438,34 @@ class GameHeader:
             # Game title
             ui.label('🌈 歇后语大挑战 🎯').classes('text-4xl font-bold text-center mb-3 gradient-text')
             
-            # Control row
-            with ui.row().classes('items-center gap-4'):
-                # Rounds selector
-                ui.label('🎲 游戏轮数:').classes('text-lg font-semibold')
-                self.rounds_select = ui.select(
-                    options={1: '1轮 🚀', 3: '3轮 ⭐', 6: '6轮 ⚡', 12: '12轮 🔥', 18: '18轮 💪'},
-                    value=12
-                ).classes('text-md')
+            # Control row - 左对齐游戏控制，右对齐下一轮按钮
+            with ui.row().classes('w-full items-center justify-between'):
+                # Left side - Game controls
+                with ui.row().classes('items-center gap-4'):
+                    # Rounds selector
+                    ui.label('🎲 游戏轮数:').classes('text-lg font-semibold')
+                    self.rounds_select = ui.select(
+                        options={1: '1轮 🚀', 3: '3轮 ⭐', 6: '6轮 ⚡', 12: '12轮 🔥', 18: '18轮 💪'},
+                        value=12
+                    ).classes('text-md')
+                    
+                    # Start button
+                    self.start_button = ui.button(
+                        '🚀 开始游戏',
+                        on_click=self.on_start_game
+                    ).style(GameTheme.START_BUTTON).classes('start-btn')
+                    
+                    # Reset button
+                    ui.button(
+                        '🔄 重置游戏',
+                        on_click=self.on_reset_game
+                    ).style(GameTheme.START_BUTTON.replace(GameTheme.SUCCESS, GameTheme.WARNING)).classes('reset-btn')
                 
-                # Start button
-                self.start_button = ui.button(
-                    '🚀 开始游戏',
-                    on_click=self.on_start_game
-                ).style(GameTheme.START_BUTTON).classes('start-btn')
-                
-                # Reset button
-                ui.button(
-                    '🔄 重置游戏',
-                    on_click=self.on_reset_game
-                ).style(GameTheme.START_BUTTON.replace(GameTheme.SUCCESS, GameTheme.WARNING)).classes('reset-btn')
+                # Right side - Next round button (initially hidden)
+                self.global_next_round_button = ui.button(
+                    '▶️ 下一轮',
+                    on_click=lambda: self.on_global_next_round() if self.on_global_next_round else None
+                ).style(GameTheme.START_BUTTON + '; display: none;').classes('next-round-btn')
     
     def update_button_state(self, game_phase: GamePhase):
         """Update button states based on game phase"""
@@ -437,7 +473,7 @@ class GameHeader:
             self.start_button.text = '🚀 开始游戏'
             self.start_button.enable()
             self.rounds_select.enable()
-        elif game_phase == GamePhase.PLAYING or game_phase == GamePhase.WAITING:
+        elif game_phase in [GamePhase.PLAYING, GamePhase.WAITING, GamePhase.ROUND_FEEDBACK]:
             self.start_button.text = '🎮 游戏中...'
             self.start_button.disable()
             self.rounds_select.disable()
@@ -445,6 +481,22 @@ class GameHeader:
             self.start_button.text = '🔄 重新开始'
             self.start_button.enable()
             self.rounds_select.enable()
+            self.hide_global_next_round_button()
+    
+    def show_global_next_round_button(self, text: str = '▶️ 下一轮'):
+        """显示全局下一轮按钮"""
+        if self.global_next_round_button:
+            self.global_next_round_button.text = text
+            self.global_next_round_button.style(GameTheme.START_BUTTON + '; display: inline-block;')
+    
+    def hide_global_next_round_button(self):
+        """隐藏全局下一轮按钮"""
+        if self.global_next_round_button:
+            self.global_next_round_button.style(GameTheme.START_BUTTON + '; display: none;')
+    
+    def set_global_next_round_callback(self, callback: Callable[[], None]):
+        """设置全局下一轮按钮的回调函数"""
+        self.on_global_next_round = callback
 
 
 class GameOverDialog:
@@ -549,6 +601,8 @@ class GameUI:
         self.game_header = None
         self.player_panels = {}
         self.game_over_dialog = None
+        self.countdown_timer = None
+        self.countdown_seconds = 0
         
         self._create_ui()
     
@@ -578,6 +632,9 @@ class GameUI:
         
         # Game over dialog
         self.game_over_dialog = GameOverDialog(self._on_new_game)
+        
+        # Set up global next round button callback
+        self.game_header.set_global_next_round_callback(self._on_next_round)
     
     def _on_answer_click(self, player: PlayerSide, answer_index: int):
         """Handle answer click from player"""
@@ -669,10 +726,99 @@ class GameUI:
         """Handle new game from dialog"""
         self._start_new_game()
     
+    def _on_next_round(self):
+        """Handle next round button click"""
+        if self.countdown_timer:
+            self.countdown_timer.cancel()
+            self.countdown_timer = None
+        self.game_state.continue_to_next_round()
+        self._update_ui()
+    
+    def _start_countdown(self, countdown_seconds: int = None):
+        """Start countdown for next round with dynamic timing based on round results"""
+        if countdown_seconds is None:
+            # 动态计算倒计时时间
+            left_stats = self.game_state.player_stats[PlayerSide.LEFT]
+            right_stats = self.game_state.player_stats[PlayerSide.RIGHT]
+            
+            # 检查本轮是否有人答错
+            left_answered_wrong = left_stats.last_round_score == 0
+            right_answered_wrong = right_stats.last_round_score == 0
+            
+            if left_answered_wrong or right_answered_wrong:
+                # 有人答错，给更多时间反思：9秒
+                countdown_seconds = 9
+                print(f"DEBUG: 有玩家答错，倒计时设为{countdown_seconds}秒")
+            else:
+                # 都答对了，快速进入下一轮：3秒
+                countdown_seconds = 3
+                print(f"DEBUG: 两人都答对，倒计时设为{countdown_seconds}秒")
+        
+        self.countdown_seconds = countdown_seconds
+        
+        def update_countdown():
+            if self.countdown_seconds > 0:
+                # Update global button text with countdown
+                countdown_text = f'⏰ {self.countdown_seconds}秒后下一轮'
+                self.game_header.show_global_next_round_button(countdown_text)
+                self.countdown_seconds -= 1
+            elif self.countdown_seconds <= 0:
+                # Auto-advance to next round
+                if self.game_state.phase == GamePhase.ROUND_FEEDBACK:
+                    if self.countdown_timer:
+                        self.countdown_timer.cancel()
+                        self.countdown_timer = None
+                    self.game_state.continue_to_next_round()
+                    self._update_ui()
+        
+        # Use NiceGUI timer instead of asyncio task
+        self.countdown_timer = ui.timer(1.0, update_countdown)
+    
+    def _show_round_feedback(self):
+        """Show round feedback for both players"""
+        # Show feedback for both players
+        for player in [PlayerSide.LEFT, PlayerSide.RIGHT]:
+            panel = self.player_panels[player]
+            question = self.game_state.get_player_question(player)
+            stats = self.game_state.player_stats[player]
+            
+            if question:
+                panel.show_round_feedback(
+                    question.correct_answer,
+                    stats.last_round_details
+                )
+                
+                # Update status based on answer
+                answer_index = self.game_state.player_answers[player]
+                if answer_index == question.correct_index:
+                    panel.update_status('✨ 太棒了！答对了！')
+                else:
+                    panel.update_status('💫 再想想！答错了！')
+                
+                # Highlight correct answer
+                panel.highlight_correct_answer(question.correct_index, answer_index)
+        
+        # Show global next round button and start countdown
+        self.game_header.show_global_next_round_button('▶️ 下一轮')
+        self._start_countdown()
+    
     def _update_ui(self):
         """Update all UI components"""
         # Update game header
         self.game_header.update_button_state(self.game_state.phase)
+        
+        # Handle round feedback phase
+        if self.game_state.phase == GamePhase.ROUND_FEEDBACK:
+            self._show_round_feedback()
+            return
+        else:
+            # Hide feedback and next round button when not in feedback phase
+            for player in [PlayerSide.LEFT, PlayerSide.RIGHT]:
+                self.player_panels[player].hide_round_feedback()
+            self.game_header.hide_global_next_round_button()
+            if self.countdown_timer:
+                self.countdown_timer.cancel()
+                self.countdown_timer = None
         
         # CRITICAL: Force reset all answer styles first if in new round
         if self.game_state.phase == GamePhase.WAITING:
@@ -720,6 +866,8 @@ class GameUI:
                     panel.update_status('⏳ 准备下一轮...')
                     # Reset answer styles when starting new round
                     panel.reset_answer_styles()
+                elif self.game_state.phase == GamePhase.ROUND_FEEDBACK:
+                    panel.update_status('📋 查看本轮结果...')
                 elif self.game_state.phase == GamePhase.FINISHED:
                     panel.update_status('🎉 游戏结束')
         

@@ -52,7 +52,8 @@ class XiehouyuGame:
         # Initialize game state
         config = GameConfig(
             total_rounds=12,
-            points_per_correct=1
+            points_per_correct=2,  # 基础得分2分
+            bonus_for_correct=1    # 优先回答奖励1分
         )
         self.game_state = GameState(self.xiehouyu_data, config)
         

@@ -31,6 +31,7 @@ This project uses uv for Python dependency management and execution:
 
 **Explorer Components**:
 - **`xiehouyu_explorer.py`**: Utility class for dataset analysis and exploration
+- **`xiehouyu_explorer_web.py`**: Web-based explorer interface for learning platform
 - **`demo_usage.py`**: Feature demonstration script
 
 ### Game Features
@@ -57,6 +58,9 @@ uv run xiehouyu_game.py
 
 # Run the explorer with interactive mode
 uv run xiehouyu_explorer.py
+
+# Run web-based explorer interface
+uv run xiehouyu_explorer_web.py
 
 # Run feature demonstration
 uv run demo_usage.py
@@ -95,3 +99,32 @@ The game is designed to be:
 **Backend**: Python with asyncio for game flow management
 **Architecture**: Component-based design with separation of concerns
 **Styling**: Modern gradients, shadows, and animations following Bento Grid principles
+
+## Code Architecture Details
+
+### Core Classes and Modules
+
+**Game Logic (`game_logic.py`)**:
+- `GameState`: Central game state management with player stats and round tracking
+- `GameConfig`: Configuration settings for rounds and scoring
+- `AnswerGenerator`: Creates multiple choice questions from xiehouyu data
+- `PlayerStats`: Individual player statistics and streak tracking
+- `GamePhase` & `PlayerSide`: Enums for game state management
+
+**UI Components (`game_ui.py`)**:
+- `GameUI`: Main UI controller coordinating all interface elements
+- `PlayerPanel`: Individual player interface components
+- `GameTheme`: UI theming and styling constants
+- CSS-based animations and responsive design
+
+**Data Management (`xiehouyu_explorer.py`)**:
+- `XiehouyuExplorer`: Core data access and analysis class
+- Random question generation with answer masking
+- Statistical analysis and search functionality
+
+### Key Design Patterns
+
+- **State Management**: Centralized game state with clear phase transitions
+- **Component Architecture**: Separated UI components with defined interfaces  
+- **Event-Driven Flow**: Async/await pattern for game progression
+- **Data Encapsulation**: Explorer class handles all data access and manipulation
