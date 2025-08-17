@@ -682,6 +682,9 @@ class GameUI:
                 else:
                     panel.update_status('💫 再想想！答错了！')
             
+            # 立即更新当前玩家的分数显示
+            panel.update_stats(self.game_state.player_stats[player], self.game_state.current_round)
+            
             # If both players had answered (checked before state was reset)
             if will_be_both_answered and other_player_answer is not None and other_player_question:
                 # Show results for the other player too
@@ -693,6 +696,9 @@ class GameUI:
                     other_panel.update_status('✨ 太棒了！答对了！')
                 else:
                     other_panel.update_status('💫 再想想！答错了！')
+                
+                # 立即更新另一个玩家的分数显示
+                other_panel.update_stats(self.game_state.player_stats[other_player], self.game_state.current_round)
             
             # Always update UI after any answer submission
             self._update_ui()
