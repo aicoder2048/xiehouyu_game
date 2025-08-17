@@ -506,10 +506,10 @@ class GameOverDialog:
         self.dialog = None
         self.on_new_game = on_new_game
     
-    def show(self, winner: Optional[PlayerSide], left_stats: PlayerStats, right_stats: PlayerStats, left_name: str = "🐬 玩家一", right_name: str = "🦊 玩家二"):
+    def show(self, winner: Optional[PlayerSide], left_stats: PlayerStats, right_stats: PlayerStats, config, left_name: str = "🐬 玩家一", right_name: str = "🦊 玩家二"):
         """Show game over dialog"""
         print(f"DEBUG: GameOverDialog.show called with winner={winner}")  # Debug log
-        with ui.dialog().classes('w-120') as self.dialog:
+        with ui.dialog().classes('max-w-6xl w-full') as self.dialog:
             with ui.card().classes('p-8 fireworks'):
                 # Confetti animation
                 confetti_html = '''
@@ -540,13 +540,13 @@ class GameOverDialog:
                 
                 # Winner announcement with celebration
                 if winner == PlayerSide.LEFT:
-                    ui.label(f'🎉🏆 {left_name} 获胜！🏆🎉').classes('text-5xl font-bold text-center text-teal-500 mb-4 winner-celebration')
+                    ui.label(f'🎉🏆 {left_name} 获胜！🏆🎉').classes('text-4xl font-bold text-center text-teal-500 mb-4 winner-celebration whitespace-nowrap')
                     ui.label('恭喜！你是歇后语大师！').classes('text-2xl text-center text-teal-400 mb-6')
                 elif winner == PlayerSide.RIGHT:
-                    ui.label(f'🎉🏆 {right_name} 获胜！🏆🎉').classes('text-5xl font-bold text-center text-orange-500 mb-4 winner-celebration')
+                    ui.label(f'🎉🏆 {right_name} 获胜！🏆🎉').classes('text-4xl font-bold text-center text-orange-500 mb-4 winner-celebration whitespace-nowrap')
                     ui.label('恭喜！你是歇后语大师！').classes('text-2xl text-center text-orange-400 mb-6')
                 else:
-                    ui.label('🤝✨ 平局！✨🤝').classes('text-4xl font-bold text-center text-gray-500 mb-4 winner-celebration')
+                    ui.label('🤝✨ 平局！✨🤝').classes('text-4xl font-bold text-center text-gray-500 mb-4 winner-celebration whitespace-nowrap')
                     ui.label('双方势均力敌，都是歇后语高手！').classes('text-xl text-center text-gray-400 mb-6')
                 
                 # Final statistics
@@ -557,9 +557,21 @@ class GameOverDialog:
                         ui.label(str(left_stats.score)).classes('text-4xl font-bold text-center')
                         ui.label('总分').classes('text-lg text-center opacity-80')
                         ui.separator()
-                        ui.label(f'答对: {left_stats.correct_answers}').classes('text-lg mt-2')
-                        ui.label(f'答错: {left_stats.wrong_answers}').classes('text-lg')
-                        ui.label(f'最高连击: {left_stats.max_streak}').classes('text-lg')
+                        
+                        # 详细得分分解
+                        left_breakdown = left_stats.get_score_breakdown(config)
+                        ui.label('📊 得分详情').classes('text-lg font-bold mt-4 mb-2')
+                        ui.label(f'正确答题得分: {left_breakdown["base_count"]} × {left_breakdown["base_points"]} = {left_breakdown["base_score"]}分').classes('text-sm')
+                        ui.label(f'优先答题得分: {left_breakdown["priority_count"]} × {left_breakdown["priority_points"]} = {left_breakdown["priority_score"]}分').classes('text-sm')
+                        
+                        if left_breakdown["streak_bonuses"]:
+                            streak_detail = " + ".join(map(str, left_breakdown["streak_bonuses"]))
+                            ui.label(f'连击得分: {streak_detail} = {left_breakdown["streak_total"]}分').classes('text-sm')
+                        else:
+                            ui.label(f'连击得分: 0分').classes('text-sm')
+                            
+                        ui.separator().classes('my-2')
+                        ui.label(f'最高连击: {left_stats.max_streak}').classes('text-sm')
                     
                     # Right player stats
                     with ui.card().style(GameTheme.PLAYER_PANEL_RIGHT).classes('p-6'):
@@ -567,9 +579,21 @@ class GameOverDialog:
                         ui.label(str(right_stats.score)).classes('text-4xl font-bold text-center')
                         ui.label('总分').classes('text-lg text-center opacity-80')
                         ui.separator()
-                        ui.label(f'答对: {right_stats.correct_answers}').classes('text-lg mt-2')
-                        ui.label(f'答错: {right_stats.wrong_answers}').classes('text-lg')
-                        ui.label(f'最高连击: {right_stats.max_streak}').classes('text-lg')
+                        
+                        # 详细得分分解
+                        right_breakdown = right_stats.get_score_breakdown(config)
+                        ui.label('📊 得分详情').classes('text-lg font-bold mt-4 mb-2')
+                        ui.label(f'正确答题得分: {right_breakdown["base_count"]} × {right_breakdown["base_points"]} = {right_breakdown["base_score"]}分').classes('text-sm')
+                        ui.label(f'优先答题得分: {right_breakdown["priority_count"]} × {right_breakdown["priority_points"]} = {right_breakdown["priority_score"]}分').classes('text-sm')
+                        
+                        if right_breakdown["streak_bonuses"]:
+                            streak_detail = " + ".join(map(str, right_breakdown["streak_bonuses"]))
+                            ui.label(f'连击得分: {streak_detail} = {right_breakdown["streak_total"]}分').classes('text-sm')
+                        else:
+                            ui.label(f'连击得分: 0分').classes('text-sm')
+                            
+                        ui.separator().classes('my-2')
+                        ui.label(f'最高连击: {right_stats.max_streak}').classes('text-sm')
                 
                 # Action buttons
                 with ui.row().classes('w-full justify-center gap-6'):
@@ -882,6 +906,7 @@ class GameUI:
                 winner,
                 self.game_state.player_stats[PlayerSide.LEFT],
                 self.game_state.player_stats[PlayerSide.RIGHT],
+                self.game_state.config,
                 left_name,
                 right_name
             )

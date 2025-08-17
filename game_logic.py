@@ -38,6 +38,12 @@ class GameConfig:
     total_rounds: int = 12
     points_per_correct: int = 2  # 回答正确的基础得分
     bonus_for_correct: int = 1  # 回答正确的额外奖励分数
+    streak_bonus: Dict[int, int] = field(default_factory=lambda: {
+        2: 1, 3: 1,  # 2-3连击：+1分
+        4: 2, 5: 2,  # 4-5连击：+2分
+        6: 3, 7: 3,  # 6-7连击：+3分
+    })  # 连击奖励配置
+    max_streak_bonus: int = 4  # 8+连击的最高奖励分数
 
 
 @dataclass
@@ -51,7 +57,11 @@ class PlayerStats:
     last_round_score: int = 0  # 上一轮获得的分数
     last_round_details: str = ""  # 上一轮得分详情
     
-    def add_correct_answer(self, points_earned: int, details: str):
+    # 详细得分统计
+    priority_answer_count: int = 0  # 优先答题次数
+    streak_bonuses: List[int] = field(default_factory=list)  # 连击奖励历史
+    
+    def add_correct_answer(self, points_earned: int, details: str, is_priority: bool = False):
         """Add a correct answer with points and details"""
         self.score += points_earned
         self.correct_answers += 1
@@ -59,13 +69,58 @@ class PlayerStats:
         self.max_streak = max(self.max_streak, self.current_streak)
         self.last_round_score = points_earned
         self.last_round_details = details
+        
+        # 记录优先答题
+        if is_priority:
+            self.priority_answer_count += 1
     
-    def add_wrong_answer(self):
-        """Add a wrong answer"""
+    def add_wrong_answer(self, config: 'GameConfig' = None):
+        """Add a wrong answer and apply streak bonus if streak is ending"""
+        streak_bonus = 0
+        if config and self.current_streak >= 2:
+            # 连击结束，计算并给予连击奖励
+            streak_bonus = self._calculate_streak_bonus(self.current_streak, config)
+            if streak_bonus > 0:
+                self.score += streak_bonus
+                self.streak_bonuses.append(streak_bonus)  # 记录连击奖励历史
+                self.last_round_details = f"回答错误，本轮得分为0分。连击结束！获得{streak_bonus}分连击奖励（{self.current_streak}连击）"
+            else:
+                self.last_round_details = "回答错误，本轮得分为0分"
+        else:
+            self.last_round_details = "回答错误，本轮得分为0分"
+        
         self.wrong_answers += 1
         self.current_streak = 0
-        self.last_round_score = 0
-        self.last_round_details = "回答错误，本轮得分为0分"
+        self.last_round_score = streak_bonus  # 连击奖励作为本轮得分
+    
+    def _calculate_streak_bonus(self, streak: int, config: 'GameConfig') -> int:
+        """Calculate streak bonus based on streak count"""
+        if streak >= 8:
+            return config.max_streak_bonus
+        return config.streak_bonus.get(streak, 0)
+    
+    def get_score_breakdown(self, config: 'GameConfig') -> Dict[str, any]:
+        """获取得分详细分解"""
+        # 基础得分：正确答题数 × 基础分数
+        base_score = self.correct_answers * config.points_per_correct
+        
+        # 优先答题得分：优先答题次数 × 优先奖励分数
+        priority_score = self.priority_answer_count * config.bonus_for_correct
+        
+        # 连击奖励总分
+        streak_total = sum(self.streak_bonuses)
+        
+        return {
+            'base_score': base_score,
+            'base_count': self.correct_answers,
+            'base_points': config.points_per_correct,
+            'priority_score': priority_score,
+            'priority_count': self.priority_answer_count,
+            'priority_points': config.bonus_for_correct,
+            'streak_total': streak_total,
+            'streak_bonuses': self.streak_bonuses.copy(),
+            'total_score': self.score
+        }
 
 
 @dataclass
@@ -188,6 +243,12 @@ class ScoreManager:
         
         return total_score, details
     
+    def _calculate_streak_bonus(self, current_streak: int) -> int:
+        """Calculate streak bonus based on current streak count"""
+        if current_streak >= 8:
+            return self.config.max_streak_bonus
+        return self.config.streak_bonus.get(current_streak, 0)
+    
     def calculate_score(self, is_correct: bool, difficulty_level: int) -> int:
         """Calculate score for a round (backwards compatibility)"""
         score, _ = self.calculate_score_and_details(is_correct, difficulty_level)
@@ -279,9 +340,9 @@ class GameState:
         )
         
         if is_correct:
-            player_stats.add_correct_answer(score, details)
+            player_stats.add_correct_answer(score, details, is_first_to_answer)
         else:
-            player_stats.add_wrong_answer()
+            player_stats.add_wrong_answer(self.config)
         
         # Check if both players answered
         if all(answer is not None for answer in self.player_answers.values()):
@@ -322,7 +383,17 @@ class GameState:
         self.phase = GamePhase.PLAYING
     
     def end_game(self):
-        """End the game"""
+        """End the game and apply final streak bonuses"""
+        # 游戏结束时，给予仍有连击的玩家连击奖励
+        for player, stats in self.player_stats.items():
+            if stats.current_streak >= 2:
+                streak_bonus = stats._calculate_streak_bonus(stats.current_streak, self.config)
+                if streak_bonus > 0:
+                    stats.score += streak_bonus
+                    stats.streak_bonuses.append(streak_bonus)  # 记录连击奖励历史
+                    # 更新最后一轮详情以显示连击奖励
+                    stats.last_round_details += f" 游戏结束！获得{streak_bonus}分连击奖励（{stats.current_streak}连击）"
+        
         print(f"DEBUG: Game ending, setting phase to FINISHED")  # Debug log
         self.phase = GamePhase.FINISHED
         print(f"DEBUG: Game phase is now {self.phase}")  # Debug log
